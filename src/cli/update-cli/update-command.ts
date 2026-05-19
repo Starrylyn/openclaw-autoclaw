@@ -2896,6 +2896,16 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
             `Targeting managed gateway service package root: ${managedServiceRootRedirect.root}`,
           ),
         );
+        defaultRuntime.log(
+          theme.warn(
+            `Shell OpenClaw root differs from the managed gateway service root: ${managedServiceRootRedirect.previousRoot}`,
+          ),
+        );
+        defaultRuntime.log(
+          theme.muted(
+            `After the update, make sure \`${CLI_NAME}\` on PATH resolves to the managed service root or reinstall the gateway service from the shell install you want to use.`,
+          ),
+        );
       }
     }
   }

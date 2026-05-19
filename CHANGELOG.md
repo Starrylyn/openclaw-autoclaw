@@ -10,6 +10,7 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
+- CLI/update: keep restart health checks working across one-version CLI/Gateway protocol skew so `openclaw update` no longer reports a false unhealthy Gateway after the Gateway has restarted successfully. Thanks @amknight.
 - Agents: include bounded trajectory queued-writer diagnostics in `pi-trajectory-flush` timeout warnings so flush stalls show pending writes, queued bytes, and append state. Fixes #82961. (#82962) Thanks @galiniliev.
 - Agents/subagents: recover stale completion announces by retrying unsupported transcript-wait wakes without transcript waiting and forcing a message-tool handoff when the requester run is already stale. Fixes #83699. (#83700) Thanks @galiniliev.
 - Agents/subagents: skip stale embedded-run wake probes for dormant completion requesters, so late subagent completions go straight to requester-agent/direct handoff instead of producing `reason=no_active_run` queue noise. (#82964) Thanks @galiniliev.

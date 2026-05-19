@@ -2885,6 +2885,33 @@ describe("update-cli", () => {
     );
   });
 
+  it("warns when a package update targets a managed service root outside the shell root", async () => {
+    const shellRoot = createCaseDir("openclaw-shell-root");
+    const serviceRoot = await createTrackedTempDir("openclaw-service-root-");
+    await fs.mkdir(path.join(serviceRoot, "dist"), { recursive: true });
+    await fs.writeFile(
+      path.join(serviceRoot, "package.json"),
+      JSON.stringify({ name: "openclaw", version: "2026.5.18" }),
+      "utf-8",
+    );
+    mockPackageInstallStatus(shellRoot);
+    serviceReadCommand.mockResolvedValue({
+      programArguments: ["node", path.join(serviceRoot, "dist", "index.js"), "gateway"],
+    });
+
+    await updateCommand({ dryRun: true });
+
+    const logs = vi
+      .mocked(defaultRuntime.log)
+      .mock.calls.map((call) => String(call[0]))
+      .join("\n");
+    expect(logs).toContain(`Targeting managed gateway service package root: ${serviceRoot}`);
+    expect(logs).toContain(
+      `Shell OpenClaw root differs from the managed gateway service root: ${shellRoot}`,
+    );
+    expect(logs).toContain("make sure `openclaw` on PATH resolves to the managed service root");
+  });
+
   it("repairs legacy config before persisting a requested update channel", async () => {
     const tempDir = createCaseDir("openclaw-update");
     mockPackageInstallStatus(tempDir);

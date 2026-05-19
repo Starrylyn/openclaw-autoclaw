@@ -437,12 +437,13 @@ export function registerDefaultAuthTokenSuite(): void {
     });
 
     test("allows previous protocol for restart health probes", async () => {
+      const previousProtocol = PROTOCOL_VERSION - 1;
       const ws = await openWs(port);
       const res = await connectReq(ws, {
-        minProtocol: MIN_PROBE_PROTOCOL_VERSION,
-        maxProtocol: MIN_PROBE_PROTOCOL_VERSION,
+        minProtocol: previousProtocol,
+        maxProtocol: previousProtocol,
         client: {
-          id: GATEWAY_CLIENT_NAMES.PROBE,
+          id: GATEWAY_CLIENT_NAMES.CLI,
           version: "2026.5.7",
           platform: "cli",
           mode: GATEWAY_CLIENT_MODES.PROBE,
@@ -454,11 +455,12 @@ export function registerDefaultAuthTokenSuite(): void {
     });
 
     test("keeps previous protocol rejected for non-probe clients", async () => {
+      const previousProtocol = PROTOCOL_VERSION - 1;
       const ws = await openWs(port);
       try {
         const res = await connectReq(ws, {
-          minProtocol: MIN_PROBE_PROTOCOL_VERSION,
-          maxProtocol: MIN_PROBE_PROTOCOL_VERSION,
+          minProtocol: previousProtocol,
+          maxProtocol: previousProtocol,
         });
         expect(res.ok).toBe(false);
       } catch {

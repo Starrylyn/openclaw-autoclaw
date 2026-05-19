@@ -629,8 +629,10 @@ terminal summary, and sanitized error text.
 
 - `PROTOCOL_VERSION` lives in `src/gateway/protocol/version.ts`.
 - Clients send `minProtocol` + `maxProtocol`; the server rejects ranges that
-  do not include its current protocol. Current clients and servers require
-  protocol v4.
+  do not include its current protocol. Current non-probe clients and servers
+  require protocol v4. Probe-mode clients used for restart/update health checks
+  are accepted down to `MIN_PROBE_PROTOCOL_VERSION` so an older CLI can verify a
+  newly restarted gateway after `openclaw update`.
 - Schemas + models are generated from TypeBox definitions:
   - `pnpm protocol:gen`
   - `pnpm protocol:gen:swift`
@@ -645,6 +647,7 @@ stable across protocol v4 and are the expected baseline for third-party clients.
 | ----------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `PROTOCOL_VERSION`                        | `4`                                                   | `src/gateway/protocol/version.ts`                                                          |
 | `MIN_CLIENT_PROTOCOL_VERSION`             | `4`                                                   | `src/gateway/protocol/version.ts`                                                          |
+| `MIN_PROBE_PROTOCOL_VERSION`              | `3`                                                   | `src/gateway/protocol/version.ts`                                                          |
 | Request timeout (per RPC)                 | `30_000` ms                                           | `src/gateway/client.ts` (`requestTimeoutMs`)                                               |
 | Preauth / connect-challenge timeout       | `15_000` ms                                           | `src/gateway/handshake-timeouts.ts` (config/env can raise the paired server/client budget) |
 | Initial reconnect backoff                 | `1_000` ms                                            | `src/gateway/client.ts` (`backoffMs`)                                                      |
