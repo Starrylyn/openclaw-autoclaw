@@ -7,6 +7,7 @@ import {
   resetSessionStoreLockRuntimeForTests,
   setSessionWriteLockAcquirerForTests,
 } from "../config/sessions.js";
+import { emitAgentEvent } from "../infra/agent-events.js";
 import {
   readCompactionCount,
   seedSessionStore,
@@ -18,11 +19,16 @@ import {
 } from "./pi-embedded-subscribe.handlers.compaction.js";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 
+vi.mock("../infra/agent-events.js", () => ({
+  emitAgentEvent: vi.fn(),
+}));
+
 function createCompactionContext(params: {
   storePath: string;
   sessionKey: string;
   agentId?: string;
   initialCount: number;
+  onAgentEvent?: (event: unknown) => void;
 }): EmbeddedPiSubscribeContext {
   let compactionCount = params.initialCount;
   return {
@@ -33,7 +39,7 @@ function createCompactionContext(params: {
       sessionKey: params.sessionKey,
       sessionId: "session-1",
       agentId: params.agentId ?? "test-agent",
-      onAgentEvent: undefined,
+      onAgentEvent: params.onAgentEvent,
     },
     state: {
       compactionInFlight: true,
@@ -56,6 +62,7 @@ function createCompactionContext(params: {
 }
 
 beforeEach(() => {
+  vi.mocked(emitAgentEvent).mockClear();
   setSessionWriteLockAcquirerForTests(async () => ({
     release: async () => {},
   }));
@@ -143,5 +150,97 @@ describe("handleCompactionEnd", () => {
     });
 
     expect(await readCompactionCount(storePath, sessionKey)).toBe(2);
+  });
+
+  it("emits successful compaction metadata without a runtime patch", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-compaction-metadata-"));
+    const storePath = path.join(tmp, "sessions.json");
+    const sessionKey = "main";
+    const onAgentEvent = vi.fn();
+    await seedSessionStore({
+      storePath,
+      sessionKey,
+      compactionCount: 0,
+    });
+
+    const ctx = createCompactionContext({
+      storePath,
+      sessionKey,
+      initialCount: 0,
+      onAgentEvent,
+    });
+
+    handleCompactionEnd(ctx, {
+      type: "compaction_end",
+      result: {
+        summary: "compressed summary",
+        tokensBefore: 120_000,
+        tokensAfter: 45_000,
+      },
+      willRetry: false,
+      aborted: false,
+    } as never);
+
+    const expectedData = {
+      phase: "end",
+      willRetry: false,
+      completed: true,
+      compacted: true,
+      tokensBefore: 120_000,
+      tokensAfter: 45_000,
+      summaryLength: "compressed summary".length,
+    };
+    expect(emitAgentEvent).toHaveBeenCalledWith({
+      runId: "run-test",
+      stream: "compaction",
+      data: expectedData,
+    });
+    expect(onAgentEvent).toHaveBeenCalledWith({
+      stream: "compaction",
+      data: expectedData,
+    });
+  });
+
+  it("marks retry compaction as completed but not final-compacted", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-compaction-retry-metadata-"));
+    const storePath = path.join(tmp, "sessions.json");
+    const sessionKey = "main";
+    const onAgentEvent = vi.fn();
+    await seedSessionStore({
+      storePath,
+      sessionKey,
+      compactionCount: 0,
+    });
+
+    const ctx = createCompactionContext({
+      storePath,
+      sessionKey,
+      initialCount: 0,
+      onAgentEvent,
+    });
+
+    handleCompactionEnd(ctx, {
+      type: "compaction_end",
+      result: {
+        summary: "retry summary",
+        tokensBefore: 90_000,
+        tokensAfter: 30_000,
+      },
+      willRetry: true,
+      aborted: false,
+    } as never);
+
+    expect(onAgentEvent).toHaveBeenCalledWith({
+      stream: "compaction",
+      data: {
+        phase: "end",
+        willRetry: true,
+        completed: true,
+        compacted: false,
+        tokensBefore: 90_000,
+        tokensAfter: 30_000,
+        summaryLength: "retry summary".length,
+      },
+    });
   });
 });
