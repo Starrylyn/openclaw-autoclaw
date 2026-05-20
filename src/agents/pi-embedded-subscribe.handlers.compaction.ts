@@ -4,28 +4,6 @@ import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 import { makeZeroUsageSnapshot } from "./usage.js";
 
-function readCompactionResultMetadata(result: unknown): {
-  tokensBefore?: number;
-  tokensAfter?: number;
-  summaryLength?: number;
-} {
-  if (result === null || typeof result !== "object") return {};
-  const input = result as {
-    tokensBefore?: unknown;
-    tokensAfter?: unknown;
-    summary?: unknown;
-  };
-  return {
-    ...(typeof input.tokensBefore === "number" && Number.isFinite(input.tokensBefore)
-      ? { tokensBefore: input.tokensBefore }
-      : {}),
-    ...(typeof input.tokensAfter === "number" && Number.isFinite(input.tokensAfter)
-      ? { tokensAfter: input.tokensAfter }
-      : {}),
-    ...(typeof input.summary === "string" ? { summaryLength: input.summary.length } : {}),
-  };
-}
-
 export function handleCompactionStart(ctx: EmbeddedPiSubscribeContext) {
   ctx.state.compactionInFlight = true;
   ctx.state.livenessState = "paused";
@@ -102,7 +80,6 @@ export function handleCompactionEnd(
     willRetry,
     completed,
     compacted: completed && !willRetry,
-    ...readCompactionResultMetadata(evt.result),
   };
   emitAgentEvent({
     runId: ctx.params.runId,

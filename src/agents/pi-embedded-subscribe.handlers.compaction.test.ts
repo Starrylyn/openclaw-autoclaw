@@ -152,7 +152,7 @@ describe("handleCompactionEnd", () => {
     expect(await readCompactionCount(storePath, sessionKey)).toBe(2);
   });
 
-  it("emits successful compaction metadata without a runtime patch", async () => {
+  it("emits successful compaction state without token metadata", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-compaction-metadata-"));
     const storePath = path.join(tmp, "sessions.json");
     const sessionKey = "main";
@@ -186,9 +186,6 @@ describe("handleCompactionEnd", () => {
       willRetry: false,
       completed: true,
       compacted: true,
-      tokensBefore: 120_000,
-      tokensAfter: 45_000,
-      summaryLength: "compressed summary".length,
     };
     expect(emitAgentEvent).toHaveBeenCalledWith({
       runId: "run-test",
@@ -201,7 +198,7 @@ describe("handleCompactionEnd", () => {
     });
   });
 
-  it("marks retry compaction as completed but not final-compacted", async () => {
+  it("marks retry compaction as completed but not final-compacted without token metadata", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-compaction-retry-metadata-"));
     const storePath = path.join(tmp, "sessions.json");
     const sessionKey = "main";
@@ -237,9 +234,6 @@ describe("handleCompactionEnd", () => {
         willRetry: true,
         completed: true,
         compacted: false,
-        tokensBefore: 90_000,
-        tokensAfter: 30_000,
-        summaryLength: "retry summary".length,
       },
     });
   });
